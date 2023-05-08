@@ -1,6 +1,8 @@
 """ Base functionality for all components and for finding/idetifying
 them """
 from abc import ABCMeta, abstractmethod
+
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
 from . import rust_types
 
 
@@ -68,7 +70,6 @@ def register_component(cls):
     assert isinstance(
         cls(), ComponentBase
     ), "Attempting to register component that does not inherit from Componentbase"
-
     COMPONENTS.append(cls)
     COMPONENTS.sort(key=lambda c: c.__name__)
     return cls

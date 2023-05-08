@@ -11,7 +11,7 @@ from blender_bevy_toolkit.component_constructor import (
 
 import logging
 from blender_bevy_toolkit.utils import jdict
-from blender_bevy_toolkit.rust_types import F32, Bool, RgbaLinear, Map, Enum, EnumValue
+from blender_bevy_toolkit.rust_types import F32, RgbaLinear, Map, Enum, EnumValue
 
 logger = logging.getLogger(__name__)
 

@@ -1,3 +1,5 @@
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent, StructProp
+from blender_bevy_toolkit.rust_types.ron import Bool
 import bpy
 from blender_bevy_toolkit.component_base import (
     register_component,
@@ -8,10 +10,9 @@ from blender_bevy_toolkit.component_constructor import (
     component_from_def,
 )
 
-
 import logging
 from blender_bevy_toolkit.utils import jdict
-from blender_bevy_toolkit.rust_types import F32, Option, Enum, EnumValue, Map, Bool
+from blender_bevy_toolkit.rust_types import F32, Option, Enum, EnumValue, Map
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,9 @@ class Visibility(ComponentBase):
 
     @staticmethod
     def encode(config, obj):
-        return Map(
-            type="bevy_render::view::visibility::Visibility",
-            struct=Map(
-                is_visible=Bool(not obj.hide_render),
-            ),
+        # return "\"bevy_render::view::visibility::Visibility\": Inherited"
+        return BevyComponent(
+            "bevy_render::view::visibility::Visibility", EnumValue("Inherited")
         )
 
     @staticmethod
@@ -101,11 +100,22 @@ class ComputedVisibility(ComponentBase):
     """
 
     @staticmethod
-    def encode(config, obj):
+    def encode_old(config, obj):
         return Map(
             type="bevy_render::view::visibility::ComputedVisibility",
             struct=Map(
                 is_visible=Bool(not obj.hide_render),
+            ),
+        )
+
+    @staticmethod
+    def encode(config, obj) -> BevyComponent:
+        """Returns a Component representing this component"""
+
+        return BevyComponent(
+            "bevy_render::view::visibility::ComputedVisibility",
+            flags=StructProp(
+                bits=0
             ),
         )
 
@@ -141,7 +151,7 @@ class ComputedVisibilityPanel(bpy.types.Panel):
         row = self.layout.row()
         row.label(text="AUTO: Part of PbrBundle")
 
-        row = self.layout.row()
-        row.prop(
-            context.object.data, "hide_viewport", text="Visible", invert_checkbox=True
-        )
+        # row = self.layout.row()
+        # row.prop(
+        #     context.object.data, "hide_viewport", text="Visible", invert_checkbox=True
+        # )

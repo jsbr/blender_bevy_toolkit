@@ -1,7 +1,9 @@
 """ Converts from blender objects into a scene description """
 import os
 import logging
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyEntity, BevyScene
 import bpy
+from blender_bevy_toolkit.rust_types.ron import encode
 from . import component_base, rust_types, jdict
 
 
@@ -21,7 +23,7 @@ class Entity:
         """Convert into a ... string!"""
         return rust_types.ron.encode(
             rust_types.ron.Struct(
-                entity=rust_types.Int(self.entity_id),
+                # entity=rust_types.Int(self.entity_id),
                 components=rust_types.List(*self.components),
             ),
             indent,
@@ -43,6 +45,21 @@ def export_entity(config, obj, entity_id):
     return entity
 
 
+def export_entity2(config, obj, entity_id):
+    """Compile all the data about an object into an entity with components"""
+    logger.debug(
+        jdict(event="serializing_entity", obj_name=obj.name, entity_id=entity_id)
+    )
+    entity = BevyEntity([])
+
+    for component in component_base.COMPONENTS:
+        if component.is_present(obj):
+            new_component = component.encode(config, obj)
+            entity.add(new_component)
+
+    return entity
+
+
 def export_all(config):
     """Exports everything from this bend file"""
     output_folder = os.path.dirname(config["output_filepath"])
@@ -52,7 +69,8 @@ def export_all(config):
         # will be subbed for actually using proper instancing of collections
         # but I couldn't get this to work in bevy :(
         bpy.ops.object.select_all(action="SELECT")
-        bpy.ops.object.duplicates_make_real(use_base_parent=True, use_hierarchy=True)
+        bpy.ops.object.duplicates_make_real(
+            use_base_parent=True, use_hierarchy=True)
 
         # Rigid bodies can often being parented to other objects as a result of
         # making duplicates real,, which Rapier doesn't deal with
@@ -89,7 +107,24 @@ def export_all(config):
     config["output_folder"] = output_folder
     config["scene"] = bpy.context.scene
 
-    entities = [export_entity(config, o, i) for i, o in enumerate(scene.objects)]
+    entities = [export_entity(config, o, i)
+                for i, o in enumerate(scene.objects)]
+
+    entities2 = [export_entity2(config, o, i)
+                 for i, o in enumerate(scene.objects)]
+
+    scene = BevyScene(entities2)
+
+    # scene = rust_types.ron.Struct(
+    #     entities=rust_types.ron.Map(
+    #         **entities2
+    #     )
+    # )
+    print("======")
+    print(encode(scene))
+    print("------")
+    # print(scene.to_str(0))
 
     with open(config["output_filepath"], "w", encoding="utf-8") as outfile:
-        outfile.write(rust_types.ron.encode(rust_types.ron.List(*entities)))
+        #outfile.write(rust_types.ron.encode(rust_types.ron.List(*entities)))
+        outfile.write(encode(scene))

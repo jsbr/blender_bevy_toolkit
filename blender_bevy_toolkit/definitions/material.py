@@ -1,3 +1,4 @@
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
 import bpy
 import struct
 import hashlib
@@ -39,7 +40,8 @@ class Material(ComponentBase):
             ),
         )
         if not os.path.exists(material_output_file):
-            logger.info(jdict(event="writing_material", path=material_output_file))
+            logger.info(jdict(event="writing_material",
+                        path=material_output_file))
             open(material_output_file, "wb").write(material_data)
 
         path = os.path.relpath(material_output_file, config["output_folder"])
@@ -47,9 +49,9 @@ class Material(ComponentBase):
         # TODO: The rust side doesn't support relative paths, so for now we have to hardcode this
         path = os.path.join("scenes", path)
 
-        return Map(
-            type="blender_bevy_toolkit::blend_material::BlendMaterialLoader",
-            struct=Map(path=Str(path)),
+        return BevyComponent(
+            "blender_bevy_toolkit::blend_material::BlendMaterialLoader",
+            path=Str(path),
         )
 
     def is_present(obj):
@@ -70,7 +72,8 @@ class Material(ComponentBase):
 
 def col_to_ron(col):
     return ron.EnumValue(
-        "RgbaLinear", ron.Struct(red=col[0], green=col[1], blue=col[2], alpha=col[3])
+        "RgbaLinear", ron.Struct(
+            red=col[0], green=col[1], blue=col[2], alpha=col[3])
     )
 
 
@@ -141,7 +144,8 @@ def serialize_material(config, material):
             base_color = col_to_ron(base_color_input.default_value)
         else:
             base_color = col_to_ron([1.0, 1.0, 1.0, 1.0])
-        base_color_texture = get_image_from_node_socket(config, base_color_input)
+        base_color_texture = get_image_from_node_socket(
+            config, base_color_input)
 
         # In blender, the emissive color is overwritten by the texture
         emmissive_color_input = main_node.inputs["Emission"]
@@ -180,7 +184,8 @@ def serialize_material(config, material):
                 roughness_node_input.links[0].from_node
                 != metallic_node_input.links[0].from_node
             ):
-                raise Exception("Roughness and Metallic must come from the same node")
+                raise Exception(
+                    "Roughness and Metallic must come from the same node")
 
             sep_node = roughness_node_input.links[0].from_node
             if sep_node.type != "SEPRGB":
@@ -189,11 +194,14 @@ def serialize_material(config, material):
                 )
 
             if roughness_node_input.links[0].from_socket.name != "G":
-                raise Exception("Roughness should be connected to the Green Channel")
+                raise Exception(
+                    "Roughness should be connected to the Green Channel")
             if metallic_node_input.links[0].from_socket.name != "R":
-                raise Exception("Metallic should be connected to the Red Channel")
+                raise Exception(
+                    "Metallic should be connected to the Red Channel")
 
-            met_rough_tex = get_image_from_node_socket(config, sep_node.inputs["Image"])
+            met_rough_tex = get_image_from_node_socket(
+                config, sep_node.inputs["Image"])
         else:
             met_rough_tex = ron.EnumValue("None")
 
@@ -206,8 +214,10 @@ def serialize_material(config, material):
                 perceptual_roughness=roughness,
                 metallic=metallic,
                 metallic_roughness_texture=met_rough_tex,
-                reflectance=ron.Float(main_node.inputs["Specular"].default_value),
-                normal_map_texture=get_normal_map(config, main_node.inputs["Normal"]),
+                reflectance=ron.Float(
+                    main_node.inputs["Specular"].default_value),
+                normal_map_texture=get_normal_map(
+                    config, main_node.inputs["Normal"]),
                 occlusion_texture=ron.EnumValue(
                     "None"
                 ),  # Blenders node graph doesn't have a neat way to represent this, so we'll leave it for now
@@ -252,7 +262,8 @@ def get_image_from_node_socket(config, socket):
     if source.image is None:
         return ron.EnumValue("None")
 
-    current_path = bpy.path.abspath(source.image.filepath, library=source.image.library)
+    current_path = bpy.path.abspath(
+        source.image.filepath, library=source.image.library)
     hashval = hashimage(image)
     extension = {
         "BMP": "bmp",

@@ -1,3 +1,4 @@
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
 import bpy
 import struct
 import hashlib
@@ -43,10 +44,12 @@ class Mesh(ComponentBase):
         # TODO: The rust side doesn't support relative paths, so for now we have to hardcode this
         path = os.path.join("scenes", path)
 
-        return rust_types.Map(
-            type="blender_bevy_toolkit::blend_mesh::BlendMeshLoader",
-            struct=rust_types.Map(path=rust_types.Str(path)),
-        )
+        # return rust_types.Map(
+        #     type="blender_bevy_toolkit::blend_mesh::BlendMeshLoader",
+        #     struct=rust_types.Map(path=rust_types.Str(path)),
+        # )
+
+        return BevyComponent("blender_bevy_toolkit::blend_mesh::BlendMeshLoader", path=rust_types.Str(path))
 
     def is_present(obj):
         """Returns true if the supplied object has this component"""
@@ -97,7 +100,8 @@ def serialize_mesh(obj):
             position = tuple(vert.co)
             normal = tuple(loop.normal)
             tangent = tuple(
-                [loop.tangent[0], loop.tangent[1], loop.tangent[2], loop.bitangent_sign]
+                [loop.tangent[0], loop.tangent[1],
+                    loop.tangent[2], loop.bitangent_sign]
             )
 
             if mesh.uv_layers:

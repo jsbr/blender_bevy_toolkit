@@ -1,6 +1,7 @@
 """ Handles encoding types (vectors, floats) from blender formats into
 bevy-reflected formats serialized with RON """
 import mathutils
+
 from . import ron
 from .ron import Str, Int, EnumValue, Map, List, Base
 
@@ -21,6 +22,12 @@ def reflect(type_path, processor):
                 ron.Map(type=type_path, value=processor(self.value)), indent
             )
 
+        def to_ron(self):
+            return ron.encode(processor(self.value))
+
+        def __str__(self) -> str:
+            return str(self.value)
+
     return ReflectedType
 
 
@@ -28,14 +35,16 @@ Quat = reflect(
     "glam::quat::Quat", lambda quat: ron.Tuple(quat.x, quat.y, quat.z, quat.w)
 )
 Vec2 = reflect("glam::vec2::Vec2", lambda vec: ron.Tuple(vec[0], vec[1]))
-Vec3 = reflect("glam::vec3::Vec3", lambda vec: ron.Tuple(vec[0], vec[1], vec[2]))
-Vec4 = reflect("glam::vec4::Vec4", lambda vec: ron.Tuple(vec.x, vec.y, vec.z, vec.w))
+Vec3 = reflect("glam::vec3::Vec3",
+               lambda vec: ron.Tuple(vec[0], vec[1], vec[2]))
+Vec4 = reflect("glam::vec4::Vec4", lambda vec: ron.Tuple(
+    vec.x, vec.y, vec.z, vec.w))
 BoolVec3 = reflect(
-    "glam::vec3::IVec3", lambda vec: ron.Tuple(int(vec[0]), int(vec[1]), int(vec[2]))
+    "glam::vec3::IVec3", lambda vec: ron.Tuple(
+        int(vec[0]), int(vec[1]), int(vec[2]))
 )
 F32 = reflect("f32", ron.Float)
 F64 = reflect("f64", ron.Float)
-Bool = reflect("bool", ron.Bool)
 RgbaLinear = reflect(
     "bevy_render::color::Color",
     lambda col: ron.EnumValue(
@@ -79,3 +88,8 @@ class Option(Base):
             ),
             indent,
         )
+
+    def __str__(self) -> str:
+        if self.value is None:
+            return EnumProp("None")
+        return EnumProp("Some", self.value)

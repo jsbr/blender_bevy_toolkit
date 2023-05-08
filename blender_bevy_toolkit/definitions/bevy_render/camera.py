@@ -1,3 +1,5 @@
+from blender_bevy_toolkit.bevy_ype.types import asColor
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent,  EnumProp, RawValue, StructProp, DebugProp
 import bpy
 from blender_bevy_toolkit.component_base import (
     register_component,
@@ -10,47 +12,38 @@ from blender_bevy_toolkit.component_constructor import (
 
 
 import logging
+from blender_bevy_toolkit.rust_types.ron import Struct, Tuple
 from blender_bevy_toolkit.utils import jdict
 from blender_bevy_toolkit.rust_types import F32, Option, Enum, EnumValue, Map
 
 logger = logging.getLogger(__name__)
 
 
+class CameraDescriptionProperties(bpy.types.PropertyGroup):
+    hdr: bpy.props.BoolProperty(name="hdr", default=False)
+    aspect_ratio: bpy.props.FloatProperty("aspect ration", default=1.0)
+    clear_color: bpy.props.FloatVectorProperty("clear color", subtype="COLOR",
+                                               size=4,
+                                               min=0.0,
+                                               max=1.0,
+                                               default=(0.0, 0.0, 0.0, 1.0))
+
+
 @register_component
 class Camera(ComponentBase):
+
     @staticmethod
-    def encode(config, obj):
-        """
-        {
-            "type": "bevy_render::camera::camera::Camera",
-            "struct": {
-            "projection_matrix": {
-                "type": "glam::mat4::Mat4",
-                "value": (1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0),
-            },
-            "name": {
-                "type": "core::option::Option<alloc::string::String>",
-                "value": Some("camera_3d"),
-            },
-            "near": {
-                "type": "f32",
-                "value": 0.1,
-            },
-            "far": {
-                "type": "f32",
-                "value": 1000.0,
-            },
-            },
-        },
-        """
-        return Map(
-            type="bevy_render::camera::camera::Camera",
-            struct=Map(
-                # "projection_matrix", # Auto-computed from projection component (I hope)
-                near=F32(obj.data.clip_start),
-                far=F32(obj.data.clip_end),
-                name=Option("alloc::string::String", "camera_3d"),
-            ),
+    def encode(config, obj) -> BevyComponent:
+        """Returns a Component representing this component"""
+        print("encode Camera")
+
+        return BevyComponent(
+            "bevy_render::camera::camera::Camera",
+            viewport=EnumProp("None"),
+            order=0,
+            is_active=True,
+            hdr=obj.bevy_camera_description.hdr,
+            msaa_writeback=True,
         )
 
     @staticmethod
@@ -60,10 +53,15 @@ class Camera(ComponentBase):
     @staticmethod
     def register():
         bpy.utils.register_class(CameraPanel)
+        bpy.utils.register_class(CameraDescriptionProperties)
+        bpy.types.Object.bevy_camera_description = bpy.props.PointerProperty(
+            type=CameraDescriptionProperties
+        )
 
     @staticmethod
     def unregister():
         bpy.utils.unregister_class(CameraPanel)
+        del bpy.types.Object.bevy_camera_description
 
     @staticmethod
     def can_add(obj):
@@ -72,7 +70,7 @@ class Camera(ComponentBase):
 
 class CameraPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_camera_properties"
-    bl_label = "BevyCamera"
+    bl_label = "Bevy Camera"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "physics"
@@ -83,12 +81,7 @@ class CameraPanel(bpy.types.Panel):
 
     def draw(self, context):
         row = self.layout.row()
-        row.label(text="Renders the scene")
-
-        row = self.layout.row()
-        row.prop(context.object.data, "clip_start", text="Near")
-        row = self.layout.row()
-        row.prop(context.object.data, "clip_end", text="Far")
+        row.prop(context.object.bevy_camera_description, "hdr", text="HDR")
 
 
 register_component(
@@ -126,14 +119,14 @@ class PerspectiveProjection(ComponentBase):
 
     @staticmethod
     def encode(config, obj):
-        return Map(
-            type="bevy_render::camera::projection::PerspectiveProjection",
-            struct=Map(
-                near=F32(obj.data.clip_start),
-                far=F32(obj.data.clip_end),
-                fov=F32(obj.data.angle),
-            ),
+        value = Struct(
+            aspect_ratio=1.0,
+            near=F32(obj.data.clip_start),
+            far=F32(obj.data.clip_end),
+            fov=F32(obj.data.angle),
         )
+        return BevyComponent(
+            "bevy_render::camera::projection::Projection", EnumValue("Perspective", Tuple(value)))  # review
 
     @staticmethod
     def is_present(obj):
@@ -168,6 +161,9 @@ class PerspectiveProjectionPanel(bpy.types.Panel):
         row.label(text="Computes a projection matrix from a set of properties")
 
         row = self.layout.row()
+        row.prop(context.object.bevy_camera_description,
+                 "aspect_ratio", text="aspect ratio")
+        row = self.layout.row()
         row.prop(context.object.data, "angle", text="FOV")
         row = self.layout.row()
         row.prop(context.object.data, "clip_start", text="Near")
@@ -183,51 +179,6 @@ class PerspectiveProjectionPanel(bpy.types.Panel):
 
 @register_component
 class OrthographicProjection(ComponentBase):
-    """
-    Controls for Orthographic Projection Matrix
-
-        "struct": {
-          "left": {
-            "type": "f32",
-            "value": -1.0,
-          },
-          "right": {
-            "type": "f32",
-            "value": 1.0,
-          },
-          "bottom": {
-            "type": "f32",
-            "value": -1.0,
-          },
-          "top": {
-            "type": "f32",
-            "value": 1.0,
-          },
-          "near": {
-            "type": "f32",
-            "value": 0.0,
-          },
-          "far": {
-            "type": "f32",
-            "value": 1000.0,
-          },
-          "window_origin": {
-            "type": "bevy_render::camera::projection::WindowOrigin",
-            "value": Center,
-          },
-          "scaling_mode": {
-            "type": "bevy_render::camera::projection::ScalingMode",
-            "value": FixedVertical,
-          },
-          "scale": {
-            "type": "f32",
-            "value": 1.0,
-          },
-          "depth_calculation": {
-            "type": "bevy_render::camera::camera::DepthCalculation",
-            "value": Distance,
-          },
-    """
 
     @staticmethod
     def encode(config, obj):
@@ -302,3 +253,160 @@ class OrthographicProjectionPanel(bpy.types.Panel):
             row.label(text="Camera sensor fit should be vertical:", icon="ERROR")
             row = self.layout.row()
             row.prop(context.object.data, "sensor_fit")
+
+
+@register_component
+class Camera3d(ComponentBase):
+    @staticmethod
+    def encode(config, obj):
+        return BevyComponent(
+            "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+            clear_color=DebugProp("Default"),
+            depth_load_op=EnumProp("Clear", 0.0),
+        )
+
+    @staticmethod
+    def is_present(obj):
+        return obj.type == "CAMERA"
+
+    @staticmethod
+    def register():
+        bpy.utils.register_class(Camera3dPanel)
+
+    @staticmethod
+    def unregister():
+        bpy.utils.unregister_class(Camera3dPanel)
+
+    @staticmethod
+    def can_add(obj):
+        return False
+
+
+class Camera3dPanel(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_camera3d_properties"
+    bl_label = "Camera 3D properties"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "physics"
+
+    @classmethod
+    def poll(cls, context):
+        return Camera3d.is_present(context.object)
+
+    def draw(self, context):
+        row = self.layout.row()
+        row.prop(context.object.bevy_camera_description, "clear_color",
+                 text="Clear color")
+        row = self.layout.row()
+        row.prop(context.object.data, "clip_start", text="Near")
+
+
+@register_component
+class DebandDither(ComponentBase):
+    @staticmethod
+    def encode(config, obj):
+        return BevyComponent(
+            "bevy_core_pipeline::tonemapping::DebandDither", RawValue(
+                "Enabled")
+        )
+
+    @staticmethod
+    def is_present(obj):
+        return obj.type == "CAMERA"
+
+    @staticmethod
+    def register():
+        pass
+
+    @staticmethod
+    def unregister():
+        pass
+
+    @staticmethod
+    def can_add(obj):
+        return False
+
+
+@register_component
+class ColorGrading(ComponentBase):
+    @staticmethod
+    def encode(config, obj):
+        # see https://bevyengine.org/news/bevy-0-10/#more-tonemapping-choices
+
+        return BevyComponent(
+            "bevy_render::view::ColorGrading", Struct(
+                exposure=0.0,
+                gamma=1.0,
+                pre_saturation=1.0,
+                post_saturation=1.0,
+            ))
+
+    @staticmethod
+    def is_present(obj):
+        return obj.type == "CAMERA"
+
+    @staticmethod
+    def register():
+        pass
+
+    @staticmethod
+    def unregister():
+        pass
+
+    @staticmethod
+    def can_add(obj):
+        return False
+
+
+@register_component
+class Tonemapping(ComponentBase):
+    @staticmethod
+    def encode(config, obj):
+        # see https://bevyengine.org/news/bevy-0-10/#more-tonemapping-choices
+        return BevyComponent(
+            "bevy_core_pipeline::tonemapping::Tonemapping", RawValue(
+                "ReinhardLuminance")
+        )
+
+    @staticmethod
+    def is_present(obj):
+        return obj.type == "CAMERA"
+
+    @staticmethod
+    def register():
+        pass
+
+    @staticmethod
+    def unregister():
+        pass
+
+    @staticmethod
+    def can_add(obj):
+        return False
+
+
+@register_component
+class CameraRenderGraph(ComponentBase):
+    @staticmethod
+    def encode(config, obj):
+        # see https://bevyengine.org/news/bevy-0-10/#more-tonemapping-choices
+
+        return BevyComponent(
+            "bevy_render::camera::camera::CameraRenderGraph", Tuple("core_3d")
+        )
+
+    @staticmethod
+    def is_present(obj):
+        return obj.type == "CAMERA"
+
+    @staticmethod
+    def register():
+        pass
+
+    @staticmethod
+    def unregister():
+        pass
+
+    @staticmethod
+    def can_add(obj):
+        return False

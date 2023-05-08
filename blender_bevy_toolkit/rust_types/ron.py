@@ -12,7 +12,6 @@ ron.encode(t)
 """
 from abc import ABCMeta
 
-
 INDENT_SIZE = 1
 INDENT_CHAR = "\t"
 
@@ -30,6 +29,9 @@ class Base(metaclass=ABCMeta):
     def to_str(self, indent):
         """Do Serialization"""
 
+    def to_ron(self):
+        return self.to_str(0)
+
 
 class List(Base):
     """List"""
@@ -43,7 +45,7 @@ class List(Base):
         indc = ind(indent + 1)
         return (
             f"[{indc}"
-            + f",{indc}".join(encode(d, indent + 1) for d in self.values)
+            + f",{indc}".join(encode(str(d), indent + 1) for d in self.values)
             + f"{ind(indent)}]"
         )
 
@@ -64,6 +66,15 @@ class Tuple(Base):
             + f"{ind(indent)})"
         )
 
+    def to_ron(self):
+        if not self.values:
+            return "()"
+        return (
+            "("
+            + ",".join(encode(d) for d in self.values)
+            + ")"
+        )
+
 
 class Struct(Base):
     """eg:
@@ -81,7 +92,7 @@ class Struct(Base):
             return "()"
         indc = ind(indent + 1)
         field_string = f",{indc}".join(
-            f"{k}:{encode(v, indent+1)}" for k, v in self.mapping.items()
+            f"{k}: {encode(v, indent+1)}" for k, v in self.mapping.items()
         )
         return f"({indc}{field_string}{ind(indent)})"
 
@@ -106,6 +117,9 @@ class Map(Base):
             for k, v in self.mapping.items()
         )
         return f"{{{indc}{field_string}{ind(indent)}}}"
+
+    def __str__(self):
+        return self.to_str(0)
 
 
 class EnumValue(Base):
@@ -138,6 +152,9 @@ class Str(Base):
         hack, so if it breaks, please do something better!"""
         return '"' + repr("'" + self.value)[2:]
 
+    def __str__(self) -> str:
+        return self.to_str(0)
+
 
 class Bool(Base):
     """Bool"""
@@ -150,6 +167,9 @@ class Bool(Base):
             return "true"
         return "false"
 
+    def __str__(self):
+        return self.to_str(0)
+
 
 class Int(Base):
     """i32, u64 etc."""
@@ -160,6 +180,9 @@ class Int(Base):
     def to_str(self, _indent):
         return str(self.value)
 
+    def __str__(self):
+        return self.to_str(0)
+
 
 class Float(Base):
     """f32, f64, etc..."""
@@ -169,6 +192,9 @@ class Float(Base):
 
     def to_str(self, _indent):
         return str(self.value)
+
+    def __str__(self):
+        return self.to_str(0)
 
 
 ENCODE_MAP = {
@@ -181,9 +207,22 @@ ENCODE_MAP = {
 }
 
 
-def encode(data, indent=0):
+def encode(data, indent=1):
     """The "base" encoder. Call this with some data and hopefully it will be encoded
     as a string"""
+    if hasattr(data, "to_ron"):
+        return add_indent(data.to_ron(), indent)
     if hasattr(data, "to_str"):
         return data.to_str(indent)
-    return ENCODE_MAP[type(data)](data).to_str(indent)
+    if type(data) in ENCODE_MAP:
+        return ENCODE_MAP[type(data)](data).to_str(indent)
+    return str(data)
+
+
+def add_indent(value, indent=1):
+    if not indent:
+        return value
+    try:
+        return str(value).replace("\n", "\n"+("  "*indent))
+    except:
+        return ""

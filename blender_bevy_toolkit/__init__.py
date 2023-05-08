@@ -12,7 +12,7 @@ import bpy
 from bpy.app.handlers import persistent  # pylint: disable=E0401
 from bpy_extras.io_utils import ExportHelper
 
-
+from .toml_component import find_component
 from .utils import jdict
 from . import components
 from . import operators
@@ -47,6 +47,7 @@ class BevyComponentsPanel(bpy.types.Panel):
 def register():
     """Blender needs to know about all our classes and UI panels
     so that it can draw/store things"""
+
     logger.info(jdict(event="registering_bevy_addon", state="start"))
     bpy.utils.register_class(BevyComponentsPanel)
     bpy.utils.register_class(operators.RemoveBevyComponent)
@@ -79,13 +80,15 @@ def unregister():
 
 @persistent
 def load_handler(_dummy):
+    print("load_handler")
     """Scan the folder of the blend file for components to add"""
     for component in component_base.COMPONENTS:
         component.unregister()
 
     components.generate_component_list()
+    find_component()
     operators.update_all_component_list()
-
+    print("componets:" + str(component_base.COMPONENTS))
     for component in component_base.COMPONENTS:
         logger.info(jdict(event="registering_component", component=str(component)))
         component.register()

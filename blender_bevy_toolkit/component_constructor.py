@@ -17,6 +17,8 @@ import logging
 import collections
 import functools
 import abc
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.rust_types.ron import Bool
 
 import bpy
 
@@ -27,14 +29,15 @@ from .component_base import ComponentBase
 
 logger = logging.getLogger(__name__)
 
-
 FieldDefinition = collections.namedtuple(
     "FieldDefinition", ["field", "type", "default", "description"]
 )
 ComponentDefinition = collections.namedtuple(
     "ComponentDefinition", ["name", "description", "id", "struct", "fields"]
 )
-
+ComponentDefinitionToml = collections.namedtuple(
+    "ComponentDefinition", ["name", "description", "id", "struct", "fields", "target"]
+)
 
 # Map from JSON strings to blender property types
 TYPE_PROPERTIES = {
@@ -53,7 +56,7 @@ TYPE_PROPERTIES = {
 # to serialize the data
 TYPE_ENCODERS = {
     "string": rust_types.Str,
-    "bool": rust_types.Bool,
+    "bool": Bool,
     "f64": rust_types.F64,
     "f32": rust_types.F32,
     "int": rust_types.Int,
@@ -114,6 +117,7 @@ def insert_class_methods(
     """The class representing this component needs some functions (eg to detect if
     the component exists on a blender object). These functions are generated and
     added to the class here"""
+
     # These functions all get put inside the component_class
     def register():
         bpy.utils.register_class(panel)
@@ -138,7 +142,8 @@ def insert_class_methods(
 
         def fix_types(field_name, value):
             """Ensure types are properly represented for encoding"""
-            field_data = [f for f in component_def.fields if f.field == field_name][0]
+            field_data = [
+                f for f in component_def.fields if f.field == field_name][0]
             encoder = TYPE_ENCODERS[field_data.type]
             return encoder(value)
 
@@ -147,8 +152,9 @@ def insert_class_methods(
             for f in fields
             if f != "present"
         }
-        return rust_types.Map(
-            type=component_def.struct, struct=rust_types.Map(**component_values)
+        return BevyComponent(
+            component_def.struct,
+            **component_values
         )
 
     component_class.register = staticmethod(register)
@@ -158,7 +164,9 @@ def insert_class_methods(
 
     if is_present_function is None:
 
-        def can_add(_obj):
+        def can_add(obj):
+            if hasattr(component_def, "target") and component_def.target:
+                return obj.type == component_def.target
             return True
 
         def add(obj):
@@ -226,7 +234,8 @@ def component_from_def(component_def, is_present_function=None):
         )
     )
 
-    properties = type(f"{component_def.name}Properties", (bpy.types.PropertyGroup,), {})
+    properties = type(f"{component_def.name}Properties",
+                      (bpy.types.PropertyGroup,), {})
     fields = create_fields(component_def)
     properties.__annotations__ = fields
 
@@ -251,6 +260,7 @@ def component_from_def(component_def, is_present_function=None):
     abc.ABCMeta.register(ComponentBase, component_class)
 
     logging.debug(
-        jdict(event="construct_class_from_def", definition=component_def, state="end")
+        jdict(event="construct_class_from_def",
+              definition=component_def, state="end")
     )
     return component_class

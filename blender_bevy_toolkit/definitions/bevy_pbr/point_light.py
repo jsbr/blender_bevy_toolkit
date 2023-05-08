@@ -1,3 +1,6 @@
+from blender_bevy_toolkit.bevy_ype.types import asColor
+from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.rust_types.ron import Bool
 import bpy
 from blender_bevy_toolkit.component_base import (
     register_component,
@@ -12,63 +15,23 @@ from blender_bevy_toolkit.component_constructor import (
 
 import logging
 from blender_bevy_toolkit.utils import jdict
-from blender_bevy_toolkit.rust_types import F32, Bool, RgbaLinear, Map
+from blender_bevy_toolkit.rust_types import F32, RgbaLinear, Map
 
 logger = logging.getLogger(__name__)
 
 
 @register_component
 class PointLight(ComponentBase):
-    """
-    {
-        "type": "bevy_pbr::light::PointLight",
-        "struct": {
-          "color": {
-            "type": "bevy_render::color::Color",
-            "value": Rgba(
-              red: 1.0,
-              green: 1.0,
-              blue: 1.0,
-              alpha: 1.0,
-            ),
-          },
-          "intensity": {
-            "type": "f32",
-            "value": 800.0,
-          },
-          "range": {
-            "type": "f32",
-            "value": 20.0,
-          },
-          "radius": {
-            "type": "f32",
-            "value": 0.0,
-          },
-          "shadows_enabled": {
-            "type": "bool",
-            "value": false,
-          },
-          "shadow_depth_bias": {
-            "type": "f32",
-            "value": 0.02,
-          },
-          "shadow_normal_bias": {
-            "type": "f32",
-            "value": 0.6,
-          },
-        },
-      },
-    """
 
     @staticmethod
-    def encode(config, obj):
+    def encode_old(config, obj):
         assert PointLight.is_present(obj)
 
         return Map(
             type="bevy_pbr::light::PointLight",
-            struct=Map(
+            strCubemapFrustauct=Map(
                 color=RgbaLinear(obj.data.color),
-                intensity=F32(obj.data.energy),
+                illuminance=F32(obj.data.energy),
                 range=F32(obj.data.cutoff_distance),
                 radius=F32(obj.data.shadow_soft_size),
                 shadows_enabled=Bool(obj.data.use_shadow),
@@ -77,6 +40,24 @@ class PointLight(ComponentBase):
                     obj.bevy_point_light_properties.shadow_normal_bias
                 ),
             ),
+        )
+
+    @staticmethod
+    def encode(config, obj) -> BevyComponent:
+        """Returns a Component representing this component"""
+
+        return BevyComponent(
+            "bevy_pbr::light::PointLight",
+
+            color=asColor(obj.data.color),
+            intensity=F32(obj.data.energy),
+            range=F32(obj.data.cutoff_distance),
+            radius=F32(obj.data.shadow_soft_size),
+            shadows_enabled=Bool(obj.data.use_shadow),
+            shadow_depth_bias=F32(obj.data.shadow_buffer_bias),
+            shadow_normal_bias=F32(
+                obj.bevy_point_light_properties.shadow_normal_bias),
+
         )
 
     @staticmethod
@@ -123,9 +104,11 @@ class PointLightPanel(bpy.types.Panel):
         row = self.layout.row()
         row.prop(context.object.data, "energy")
         row = self.layout.row()
-        row.prop(context.object.data, "cutoff_distance", text="Range")  # Bevy Range
+        row.prop(context.object.data, "cutoff_distance",
+                 text="Range")  # Bevy Range
         row = self.layout.row()
-        row.prop(context.object.data, "shadow_soft_size", text="Radius")  # Bevy Radius
+        row.prop(context.object.data, "shadow_soft_size",
+                 text="Radius")  # Bevy Radius
         row = self.layout.row()
         row.prop(context.object.data, "use_shadow", text="Enable Shadow")
 
@@ -135,11 +118,13 @@ class PointLightPanel(bpy.types.Panel):
         row.prop(context.object.data, "shadow_buffer_bias")  # Bevy Depth Bias
         row = self.layout.row()
         row.active = shadow_enabled
-        row.prop(context.object.bevy_point_light_properties, "shadow_normal_bias")
+        row.prop(context.object.bevy_point_light_properties,
+                 "shadow_normal_bias")
 
 
 class PointLightProperties(bpy.types.PropertyGroup):
-    shadow_normal_bias: bpy.props.FloatProperty(name="Shadow Normal Bias", default=0.6)
+    shadow_normal_bias: bpy.props.FloatProperty(
+        name="Shadow Normal Bias", default=0.6)
 
 
 register_component(

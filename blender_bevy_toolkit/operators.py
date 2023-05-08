@@ -5,7 +5,6 @@ object. These actions include ... adding and removing bevy components
 import bpy
 from . import component_base
 
-
 # We need a list of all the components with a unique ID's and the
 # class that represents it. This is used to create the add/remote drop-downs
 ALL_COMPONENT_LIST = [
@@ -40,6 +39,8 @@ def generate_component_to_add_list(_widget, context):
     """When adding a bevy component, the list only displays the
     components that do not already exist on the object and ones that
     can be added to this object type"""
+    print("=======")
+    print(context.object.type)
     component_types = [("0", "None", "None")]
     for id_str, name, component in ALL_COMPONENT_LIST:
         if component.is_present(context.object):
@@ -113,7 +114,7 @@ class AddBevyComponent(bpy.types.Operator):
         selected = self.property_to_add
         if selected in ("0", ""):
             return {"FINISHED"}
-
+        print("######" + str(component_base.COMPONENTS))
         component = component_base.COMPONENTS[int(selected) - 1]
         component.add(context.object)
 
