@@ -1,4 +1,4 @@
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
 import bpy
 import struct
 import hashlib
@@ -8,12 +8,19 @@ from blender_bevy_toolkit.component_base import (
     ComponentBase,
 )
 from blender_bevy_toolkit import rust_types
+from blender_bevy_toolkit.export_data import export_data
 
 import logging
 from blender_bevy_toolkit import jdict
 import bmesh
 
+from blender_bevy_toolkit.utils import getAssetFolder
+
 logger = logging.getLogger(__name__)
+
+
+class MeshDescriptionProperties(bpy.types.PropertyGroup):
+    color_vertext: bpy.props.BoolProperty(name="color vertext", default=False)
 
 
 @register_component
@@ -22,7 +29,14 @@ class Mesh(ComponentBase):
         """Returns a Component to encode this component
         into a scene file"""
         assert Mesh.is_present(obj)
-
+        scenes_dir = getAssetFolder(config)
+        if (config["gltf"]):
+            if obj.name not in export_data.meshes:
+                export_data.meshes.append(obj.name)
+            ind = export_data.meshes.index(obj.name)
+            path = os.path.join(scenes_dir, os.path.basename(
+                config["output_filepath"])) + f".glb#Mesh{ind}/Primitive0"
+            return BevyComponent("blender_bevy_toolkit::blend_glb::BlendGLBMeshLoader", path=rust_types.Str(path))
         mesh_data = serialize_mesh(obj)
 
         hash = hashlib.md5()
@@ -42,7 +56,8 @@ class Mesh(ComponentBase):
         path = os.path.relpath(mesh_output_file, config["output_folder"])
 
         # TODO: The rust side doesn't support relative paths, so for now we have to hardcode this
-        path = os.path.join("scenes", path)
+
+        path = os.path.join(scenes_dir, path)
 
         # return rust_types.Map(
         #     type="blender_bevy_toolkit::blend_mesh::BlendMeshLoader",
@@ -60,11 +75,33 @@ class Mesh(ComponentBase):
 
     @staticmethod
     def register():
-        pass
+        bpy.utils.register_class(MeshDescriptionProperties)
+        bpy.utils.register_class(MeshDescriptionPanel)
+        bpy.types.Object.mesh_description = bpy.props.PointerProperty(
+            type=MeshDescriptionProperties
+        )
 
     @staticmethod
     def unregister():
-        pass
+        bpy.utils.unregister_class(MeshDescriptionProperties)
+        bpy.utils.unregister_class(MeshDescriptionPanel)
+        del bpy.types.Object.mesh_description
+
+
+class MeshDescriptionPanel(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_mesh_description"
+    bl_label = "Mesh"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "physics"
+
+    @classmethod
+    def poll(cls, context):
+        return Mesh.is_present(context.object) and not context.scene.bevy_option.hide_default
+
+    def draw(self, context):
+        row = self.layout.row()
+        row.prop(context.object.mesh_description, "color_vertext")
 
 
 def serialize_mesh(obj):
@@ -81,15 +118,17 @@ def serialize_mesh(obj):
     mesh.calc_loop_triangles()
     mesh.calc_normals_split()
     mesh.calc_tangents()
-
+    blender_color_idx = mesh.color_attributes.render_color_index
     verts = []
     normals = []
     indices = []
     uv0 = []
     tangents = []
-
+    verts_colors = []
+    # verts_colors =  list(mesh.color_attributes[0].data)  if len(mesh.color_attributes) else []
     dedup_data_lookup = {}
-
+    # for poly in mesh.polygons:
+    #     print("Polygon index: %d, length: %d" % (poly.index, poly.loop_total))
     for loop_tri in mesh.loop_triangles:
         triangle_indices = []
 
@@ -98,11 +137,16 @@ def serialize_mesh(obj):
 
             vert = mesh.vertices[loop.vertex_index]
             position = tuple(vert.co)
+            # print(dir(vert))
             normal = tuple(loop.normal)
             tangent = tuple(
                 [loop.tangent[0], loop.tangent[1],
-                    loop.tangent[2], loop.bitangent_sign]
+                 loop.tangent[2], loop.bitangent_sign]
             )
+
+            # if mesh.vertex_colors:
+            #     print("======")
+            #     print(mesh.vertex_colors.keys())
 
             if mesh.uv_layers:
 
@@ -111,6 +155,12 @@ def serialize_mesh(obj):
             else:
                 uv = (0.0, 0.0)
 
+            color = None
+            if blender_color_idx != -1 and mesh.color_attributes[blender_color_idx].data[loop.vertex_index]:
+                color = mesh.color_attributes[blender_color_idx].data[loop.vertex_index].color
+            elif blender_color_idx != -1:
+                color = tuple(1.0, 1.0, 1.0, 1.0)
+
             dedup = (position, normal, uv, tangent)
             if dedup not in dedup_data_lookup:
                 index = len(verts)
@@ -118,6 +168,8 @@ def serialize_mesh(obj):
                 normals.append(normal)
                 uv0.append(uv)
                 tangents.append(tangent)
+                if color:
+                    verts_colors.append(color)
                 dedup_data_lookup[dedup] = index
             else:
                 index = dedup_data_lookup[dedup]
@@ -152,6 +204,8 @@ def serialize_mesh(obj):
     for index in indices:
         out_data += struct.pack("III", *index)
 
+    for col in verts_colors:
+        out_data += struct.pack("ffff", *col)
     return out_data
 
 

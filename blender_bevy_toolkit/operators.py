@@ -18,8 +18,11 @@ def update_all_component_list():
     blend file is loaded)."""
     global ALL_COMPONENT_LIST  # pylint: disable=W0603
     component_list = []
+    print("update_all_component_list")
+    print(component_base.COMPONENTS)
     for component_index, component in enumerate(component_base.COMPONENTS):
-        component_list.append((str(component_index + 1), component.__name__, component))
+        component_list.append(
+            (str(component_index + 1), component.__name__, component))
     ALL_COMPONENT_LIST = component_list
 
 
@@ -39,8 +42,6 @@ def generate_component_to_add_list(_widget, context):
     """When adding a bevy component, the list only displays the
     components that do not already exist on the object and ones that
     can be added to this object type"""
-    print("=======")
-    print(context.object.type)
     component_types = [("0", "None", "None")]
     for id_str, name, component in ALL_COMPONENT_LIST:
         if component.is_present(context.object):
@@ -114,8 +115,8 @@ class AddBevyComponent(bpy.types.Operator):
         selected = self.property_to_add
         if selected in ("0", ""):
             return {"FINISHED"}
-        print("######" + str(component_base.COMPONENTS))
         component = component_base.COMPONENTS[int(selected) - 1]
+        print(component_base.COMPONENTS)
         component.add(context.object)
 
         # Redraw UI

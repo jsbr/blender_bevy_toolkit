@@ -1,4 +1,4 @@
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
 import bpy
 import struct
 import hashlib
@@ -12,6 +12,9 @@ from blender_bevy_toolkit.rust_types import ron, Map, Str
 
 import logging
 from blender_bevy_toolkit import jdict
+from blender_bevy_toolkit.utils import getAssetFolder
+from blender_bevy_toolkit import rust_types
+from blender_bevy_toolkit.export_data import export_data
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +22,27 @@ logger = logging.getLogger(__name__)
 @register_component
 class Material(ComponentBase):
     def encode(config, obj):
-        """Saves an auxilary file containing material data and a component
+        """Saves an auxilary file containing material data and a componentMaterial0
         that references it"""
         assert Material.is_present(obj)
+        scenes_dir = getAssetFolder(config)
+
+        material_data = (
+            serialize_material(config, obj.data.materials[0])
+            if obj.data.materials and obj.data.materials[0] is not None
+            else DEFAULT_MATERIAL
+        )
+        print(
+            f"material {obj.name} {len(obj.data.materials)} " + str(config["gltf"]))
+        if (config["gltf"] and len(obj.data.materials)):
+            if obj.data.materials[0].name not in export_data.materials:
+                export_data.materials.append(obj.data.materials[0].name)
+            print(export_data.materials)
+            material = str(export_data.materials.index(
+                obj.data.materials[0].name))
+            path = os.path.join(scenes_dir, os.path.basename(
+                config["output_filepath"])) + ".glb#Material" + material
+            return BevyComponent("blender_bevy_toolkit::blend_glb::BlendGLBMaterialLoader", path=rust_types.Str(path))
 
         material_data = (
             serialize_material(config, obj.data.materials[0])
@@ -41,7 +62,7 @@ class Material(ComponentBase):
         )
         if not os.path.exists(material_output_file):
             logger.info(jdict(event="writing_material",
-                        path=material_output_file))
+                              path=material_output_file))
             open(material_output_file, "wb").write(material_data)
 
         path = os.path.relpath(material_output_file, config["output_folder"])
@@ -256,7 +277,9 @@ def get_image_from_node_socket(config, socket):
 
     source = socket.links[0].from_node
     if source.type != "TEX_IMAGE":
-        raise Exception("Expected image input to socket", socket.name)
+        print("Expected image input to socket:" + str(socket.name))
+        return None
+        # raise Exception("Expected image input to socket", socket.name)
 
     image = source.image
     if source.image is None:

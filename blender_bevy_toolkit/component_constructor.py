@@ -17,7 +17,7 @@ import logging
 import collections
 import functools
 import abc
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
 from blender_bevy_toolkit.rust_types.ron import Bool
 
 import bpy
@@ -35,8 +35,9 @@ FieldDefinition = collections.namedtuple(
 ComponentDefinition = collections.namedtuple(
     "ComponentDefinition", ["name", "description", "id", "struct", "fields"]
 )
-ComponentDefinitionToml = collections.namedtuple(
-    "ComponentDefinition", ["name", "description", "id", "struct", "fields", "target"]
+ComponentDefinitionCustom = collections.namedtuple(
+    "ComponentDefinition", ["name", "description",
+                            "id", "struct", "fields", "target"]
 )
 
 # Map from JSON strings to blender property types
@@ -81,8 +82,14 @@ def create_ui_panel(component_def, component_class, fields):
         },
     )
     panel.poll = classmethod(
-        lambda cls, context: component_class.is_present(context.object)
+        lambda cls, context: component_class.is_present(context.object) and (
+            hasattr(component_def, "target") or not bpy.context.scene.bevy_option.hide_default)
     )
+
+    def draw_header(self, context):
+        if hasattr(component_def, "target"):
+            # self.layout.prop(getattr(context.object, component_def.id), "enabled", text="")
+            self.layout.operator("scene.remove_" + component_def.id.lower())
 
     def draw(self, context):
         row = self.layout.row()
@@ -98,6 +105,7 @@ def create_ui_panel(component_def, component_class, fields):
                 row.prop(getattr(context.object, component_def.id), field)
 
     panel.draw = draw
+    panel.draw_header = draw_header
 
     logging.debug(
         jdict(
@@ -118,10 +126,19 @@ def insert_class_methods(
     the component exists on a blender object). These functions are generated and
     added to the class here"""
 
+    class CustomComponenetRemove(bpy.types.Operator):
+        bl_idname = "scene.remove_" + component_def.id.lower()
+        bl_label = "X"
+
+        def execute(self, context):
+            getattr(context.object, component_def.id).present = False
+            return {'FINISHED'}
+
     # These functions all get put inside the component_class
     def register():
         bpy.utils.register_class(panel)
         bpy.utils.register_class(properties)
+        bpy.utils.register_class(CustomComponenetRemove)
         setattr(
             bpy.types.Object,
             component_def.id,
@@ -131,6 +148,7 @@ def insert_class_methods(
     def unregister():
         bpy.utils.unregister_class(panel)
         bpy.utils.unregister_class(properties)
+        bpy.utils.unregister_class(CustomComponenetRemove)
         delattr(bpy.types.Object, component_def.id)
 
     def remove(obj):
@@ -166,6 +184,7 @@ def insert_class_methods(
 
         def can_add(obj):
             if hasattr(component_def, "target") and component_def.target:
+                print(f"can_add: {obj.type} {component_def.id} {component_def.target}")
                 return obj.type == component_def.target
             return True
 
@@ -211,6 +230,7 @@ def create_fields(component_def):
         fields[field.field] = prop
 
     fields["present"] = bpy.props.BoolProperty(name="Present", default=False)
+    # fields["enabled"] = bpy.props.BoolProperty(name="enabled", default=False)
     return fields
 
 

@@ -1,4 +1,4 @@
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent, StructProp
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent, StructProp
 from blender_bevy_toolkit.rust_types.ron import Bool
 import bpy
 from blender_bevy_toolkit.component_base import (
@@ -70,16 +70,16 @@ class VisibilityPanel(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return Visibility.is_present(context.object)
+        return Visibility.is_present(context.object) and not bpy.context.scene.bevy_option.hide_default
 
     def draw(self, context):
         row = self.layout.row()
         row.label(text="AUTO: Part of PbrBundle")
 
         row = self.layout.row()
-        row.prop(
-            context.object.data, "hide_viewport", text="Visible", invert_checkbox=True
-        )
+        # row.prop(
+        #     context.object.data, "hide_viewport", text="Visible", invert_checkbox=True
+        # )
 
 
 @register_component
@@ -145,7 +145,7 @@ class ComputedVisibilityPanel(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return ComputedVisibility.is_present(context.object)
+        return ComputedVisibility.is_present(context.object) and not bpy.context.scene.bevy_option.hide_default
 
     def draw(self, context):
         row = self.layout.row()

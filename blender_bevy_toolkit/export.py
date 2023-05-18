@@ -1,11 +1,10 @@
 """ Converts from blender objects into a scene description """
 import os
 import logging
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyEntity, BevyScene
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyEntity, BevyScene
 import bpy
 from blender_bevy_toolkit.rust_types.ron import encode
 from . import component_base, rust_types, jdict
-
 
 logger = logging.getLogger(__name__)
 
@@ -120,11 +119,8 @@ def export_all(config):
     #         **entities2
     #     )
     # )
-    print("======")
-    print(encode(scene))
-    print("------")
     # print(scene.to_str(0))
 
     with open(config["output_filepath"], "w", encoding="utf-8") as outfile:
-        #outfile.write(rust_types.ron.encode(rust_types.ron.List(*entities)))
+        # outfile.write(rust_types.ron.encode(rust_types.ron.List(*entities)))
         outfile.write(encode(scene))

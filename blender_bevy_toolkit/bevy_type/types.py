@@ -1,7 +1,7 @@
 
 
 from multiprocessing import RawValue
-from blender_bevy_toolkit.bevy_ype.bevy_scene import EnumProp, StructProp
+from blender_bevy_toolkit.bevy_type.bevy_scene import EnumProp, StructProp
 from blender_bevy_toolkit.rust_types.ron import Tuple
 
 

@@ -53,7 +53,8 @@ impl AssetLoader for BlendMeshAssetLoader {
 }
 
 pub fn load_mesh(data: &[u8]) -> Mesh {
-    let (indices, positions, tangents, normals, uv0s) = extact_buffers_from_mesh(data);
+    let (indices, positions, tangents, normals, uv0s, verts_colors) =
+        extact_buffers_from_mesh(data);
     let indices = Indices::U32(indices);
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -62,6 +63,9 @@ pub fn load_mesh(data: &[u8]) -> Mesh {
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv0s);
     mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
+    if verts_colors.is_some() {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, verts_colors.unwrap());
+    }
     mesh
 }
 
@@ -116,24 +120,46 @@ fn parse_u32_array(data: &[u8], num_elements: usize) -> Vec<u32> {
     out_array
 }
 
+fn color(len: usize, index: usize, num_verts: usize, mesh: &[u8]) -> Option<FVec4Arr> {
+    if index + 1 > len {
+        None
+    } else {
+        Some(parse_vec4_array(&mesh[index..], num_verts))
+    }
+}
+
 /// Converts the bytes of a binary stl file into a vector of face indices,
 /// vertices and vertex normals.
 /// Expects correctly formatted STL files
-fn extact_buffers_from_mesh(mesh: &[u8]) -> (Vec<u32>, FVec3Arr, FVec4Arr, FVec3Arr, FVec2Arr) {
+fn extact_buffers_from_mesh(
+    mesh: &[u8],
+) -> (
+    Vec<u32>,
+    FVec3Arr,
+    FVec4Arr,
+    FVec3Arr,
+    FVec2Arr,
+    Option<FVec4Arr>,
+) {
     let num_verts = u16::from_le_bytes(mesh[0..2].try_into().unwrap()) as usize;
     let num_faces = u16::from_le_bytes(mesh[2..4].try_into().unwrap()) as usize;
+    let len = mesh.len();
 
     let verts_start = 4;
     let normals_start = verts_start + num_verts * 4 * 3;
     let tangents_start = normals_start + num_verts * 4 * 3;
     let uv0_start = tangents_start + num_verts * 4 * 4;
     let indices_start = uv0_start + num_verts * 4 * 2;
+    let color_start = indices_start + num_faces * 3 * 4;
 
     let positions = parse_vec3_array(&mesh[verts_start..], num_verts);
     let normals = parse_vec3_array(&mesh[normals_start..], num_verts);
     let tangents = parse_vec4_array(&mesh[tangents_start..], num_verts);
     let uv0 = parse_vec2_array(&mesh[uv0_start..], num_verts);
     let indices = parse_u32_array(&mesh[indices_start..], num_faces * 3);
+    println!("##");
+    println!("{}", num_faces);
+    let vert_color = color(len, color_start, num_verts, mesh);
 
-    (indices, positions, tangents, normals, uv0)
+    (indices, positions, tangents, normals, uv0, vert_color)
 }

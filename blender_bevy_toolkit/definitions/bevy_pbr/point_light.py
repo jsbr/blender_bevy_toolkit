@@ -1,5 +1,5 @@
-from blender_bevy_toolkit.bevy_ype.types import asColor
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.types import asColor
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
 from blender_bevy_toolkit.rust_types.ron import Bool
 import bpy
 from blender_bevy_toolkit.component_base import (

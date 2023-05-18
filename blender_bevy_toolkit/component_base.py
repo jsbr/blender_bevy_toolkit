@@ -2,7 +2,7 @@
 them """
 from abc import ABCMeta, abstractmethod
 
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
 from . import rust_types
 
 

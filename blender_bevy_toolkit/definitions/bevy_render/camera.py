@@ -1,6 +1,8 @@
-from blender_bevy_toolkit.bevy_ype.types import asColor
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent,  EnumProp, RawValue, StructProp, DebugProp
+from blender_bevy_toolkit.bevy_type.types import asColor
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent, EnumProp, RawValue, StructProp, DebugProp
 import bpy
+
+from blender_bevy_toolkit.bevy_type.enums import TONE_MAPPING
 from blender_bevy_toolkit.component_base import (
     register_component,
     ComponentBase,
@@ -9,7 +11,6 @@ from blender_bevy_toolkit.component_constructor import (
     ComponentDefinition,
     component_from_def,
 )
-
 
 import logging
 from blender_bevy_toolkit.rust_types.ron import Struct, Tuple
@@ -27,6 +28,14 @@ class CameraDescriptionProperties(bpy.types.PropertyGroup):
                                                min=0.0,
                                                max=1.0,
                                                default=(0.0, 0.0, 0.0, 1.0))
+    tonemapping: bpy.props.EnumProperty(
+        items=TONE_MAPPING, name="Tonemapping", default="BlenderFilmic")
+
+    exposure: bpy.props.FloatProperty(default=0.0, name="exposure")
+    gamma: bpy.props.FloatProperty(default=1.0, name="gamma")
+    pre_saturation: bpy.props.FloatProperty(default=1.0, name="pre_saturation")
+    post_saturation: bpy.props.FloatProperty(
+        default=1.0, name="post_saturation")
 
 
 @register_component
@@ -52,15 +61,17 @@ class Camera(ComponentBase):
 
     @staticmethod
     def register():
-        bpy.utils.register_class(CameraPanel)
+        print("register Camera")
         bpy.utils.register_class(CameraDescriptionProperties)
         bpy.types.Object.bevy_camera_description = bpy.props.PointerProperty(
             type=CameraDescriptionProperties
         )
+        bpy.utils.register_class(CameraPanel)
 
     @staticmethod
     def unregister():
         bpy.utils.unregister_class(CameraPanel)
+        bpy.utils.unregister_class(CameraDescriptionProperties)
         del bpy.types.Object.bevy_camera_description
 
     @staticmethod
@@ -77,11 +88,31 @@ class CameraPanel(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return Camera.is_present(context.object)
+        return Camera.is_present(context.object) and not bpy.context.scene.bevy_option.hide_default
 
     def draw(self, context):
         row = self.layout.row()
         row.prop(context.object.bevy_camera_description, "hdr", text="HDR")
+
+        box = self.layout.box()
+        row = box.row()
+        row.label(text='Tonemapping')
+        row = box.row()
+        row.prop(context.object.bevy_camera_description,
+                 "tonemapping", text="Tonemapping")
+
+        box = self.layout.box()
+        row = box.row()
+        row.label(text='ColorGrading')
+        row = box.row()
+        row.prop(context.object.bevy_camera_description,
+                 "exposure", text="Exposure")
+        row.prop(context.object.bevy_camera_description, "gamma", text="Gamma")
+        row = box.row()
+        row.prop(context.object.bevy_camera_description,
+                 "pre_saturation", text="Pre saturation")
+        row.prop(context.object.bevy_camera_description,
+                 "post_saturation", text="Post saturation")
 
 
 register_component(
@@ -154,7 +185,7 @@ class PerspectiveProjectionPanel(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return PerspectiveProjection.is_present(context.object)
+        return PerspectiveProjection.is_present(context.object) and not bpy.context.scene.bevy_option.hide_default
 
     def draw(self, context):
         row = self.layout.row()
@@ -233,7 +264,7 @@ class OrthographicProjectionPanel(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return OrthographicProjection.is_present(context.object)
+        return OrthographicProjection.is_present(context.object) and not bpy.context.scene.bevy_option.hide_default
 
     def draw(self, context):
         row = self.layout.row()
@@ -291,7 +322,7 @@ class Camera3dPanel(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return Camera3d.is_present(context.object)
+        return Camera3d.is_present(context.object) and not bpy.context.scene.bevy_option.hide_default
 
     def draw(self, context):
         row = self.layout.row()
@@ -335,10 +366,10 @@ class ColorGrading(ComponentBase):
 
         return BevyComponent(
             "bevy_render::view::ColorGrading", Struct(
-                exposure=0.0,
-                gamma=1.0,
-                pre_saturation=1.0,
-                post_saturation=1.0,
+                exposure=obj.bevy_camera_description.exposure,
+                gamma=obj.bevy_camera_description.gamma,
+                pre_saturation=obj.bevy_camera_description.pre_saturation,
+                post_saturation=obj.bevy_camera_description.post_saturation,
             ))
 
     @staticmethod
@@ -364,8 +395,7 @@ class Tonemapping(ComponentBase):
     def encode(config, obj):
         # see https://bevyengine.org/news/bevy-0-10/#more-tonemapping-choices
         return BevyComponent(
-            "bevy_core_pipeline::tonemapping::Tonemapping", RawValue(
-                "ReinhardLuminance")
+            "bevy_core_pipeline::tonemapping::Tonemapping", RawValue(obj.bevy_camera_description.tonemapping)
         )
 
     @staticmethod

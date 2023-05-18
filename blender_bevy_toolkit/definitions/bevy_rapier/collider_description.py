@@ -143,6 +143,18 @@ class ColliderDescription(ComponentBase):
         del bpy.types.Object.rapier_collider_description
 
 
+class ButtonOperator(bpy.types.Operator):
+    bl_idname = "scene.button_operator"
+    bl_label = "X"
+
+    id = bpy.props.IntProperty()
+
+    def execute(self, context):
+        print("Pressed button ", self.id)
+        context.object.rapier_collider2_description.present = False
+        return {'FINISHED'}
+
+
 class ColliderDescriptionPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_rapier_collider_description"
     bl_label = "ColliderDescription"
@@ -153,6 +165,9 @@ class ColliderDescriptionPanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         return ColliderDescription.is_present(context.object)
+
+    def draw_header(self, context):
+        self.layout.operator("scene.button_operator")
 
     def draw(self, context):
         row = self.layout.row()

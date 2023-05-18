@@ -1,13 +1,26 @@
 import mathutils
-from blender_bevy_toolkit.bevy_ype.types import asQuat, asVec3
+from blender_bevy_toolkit.bevy_type.types import asQuat, asVec3
 from blender_bevy_toolkit.component_base import (
     register_component,
     ComponentBase,
     rust_types,
 )
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
 
 from bpy_extras.io_utils import axis_conversion
+
+
+def getYUpTransform(matrix):
+    m = matrix
+
+    position, rotation, scale = m.decompose()
+    s = mathutils.Vector((scale[0], scale[2], scale[1]))
+    rot = mathutils.Quaternion(
+        (rotation[0], rotation[1], rotation[3], -rotation[2]))
+    p = mathutils.Vector((position[0], position[2], -position[1]))
+    r = [rot[1], rot[2], rot[3], rot[0]]
+
+    return (p, r, s)
 
 
 @register_component
@@ -36,21 +49,26 @@ class Transform(ComponentBase):
         # if export_settings['gltf_yup']:
         axis_basis_change = mathutils.Matrix(
             ((1.0, 0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, -1.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
-
+        #
         if obj.parent is None:
-            transform = obj.matrix_world @ axis_basis_change
+            transform = obj.matrix_world
         else:
-            transform = obj.matrix_local @ axis_basis_change
-
-        position, rotation, scale = transform.decompose()
-        s = mathutils.Vector((scale[0], scale[2], scale[1]))
-        rot = mathutils.Quaternion(
-            (rotation[0], rotation[1], rotation[3], -rotation[2]))
-        p = mathutils.Vector((position[0], position[2], -position[1]))
-        r = [rot[1], rot[2], rot[3], rot[0]]
+            transform = obj.matrix_local
+        #
+        # position, rotation, scale = transform.decompose()
+        # s = mathutils.Vector((scale[0], scale[2], scale[1]))
+        # rot = mathutils.Quaternion(
+        #     (rotation[0], rotation[1], rotation[3], -rotation[2]))
+        # p = mathutils.Vector((position[0], position[2], -position[1]))
+        # r = [rot[1], rot[2], rot[3], rot[0]]
         # s = scale
         # r = rotation
         # p = position
+        print("obj.type: " + obj.type + " " + str(config["gltf"]))
+        if config["gltf"] and obj.type == "MESH":
+            p, r, s = getYUpTransform(transform)
+        else:
+            p, r, s = getYUpTransform(transform @ axis_basis_change)
 
         return BevyComponent(
             "bevy_transform::components::transform::Transform",

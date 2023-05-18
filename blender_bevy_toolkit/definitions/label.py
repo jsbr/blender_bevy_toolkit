@@ -3,7 +3,7 @@ from blender_bevy_toolkit.component_base import (
     ComponentBase,
 )
 from blender_bevy_toolkit import rust_types
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
 
 
 @register_component

@@ -1,12 +1,13 @@
-from blender_bevy_toolkit.bevy_ype.types import Vec3, asQuat, asVec3, asMatrix
+from blender_bevy_toolkit.bevy_type.types import Vec3, asQuat, asVec3, asMatrix
 from blender_bevy_toolkit.component_base import (
     register_component,
     ComponentBase,
     rust_types,
 )
 from bpy_extras.io_utils import axis_conversion
-from blender_bevy_toolkit.bevy_ype.bevy_scene import BevyComponent, StructProp
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent, StructProp
 from blender_bevy_toolkit.rust_types.ron import Struct, Tuple
+import mathutils
 
 
 @register_component
@@ -17,9 +18,13 @@ class GlobalTransform(ComponentBase):
         transform = obj.matrix_world
 
         position, rotation, scale = transform.decompose()
-        global_matrix = axis_conversion(from_forward="-Z",
-                                        from_up="Y",
-                                        ).to_4x4()
+        if config["gltf"] and obj.type == "MESH":
+            global_matrix = mathutils.Matrix()
+            global_matrix.identity()
+        else:
+            global_matrix = axis_conversion(from_forward="-Z",
+                                            from_up="Y",
+                                            ).to_4x4()
         return BevyComponent(
             "bevy_transform::components::global_transform::GlobalTransform",
             Tuple(Struct(
