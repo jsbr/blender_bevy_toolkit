@@ -46,6 +46,7 @@ class Visibility(ComponentBase):
     def is_present(obj):
         return obj.type in [
             "MESH",
+            "LIGHT"
         ]
 
     @staticmethod

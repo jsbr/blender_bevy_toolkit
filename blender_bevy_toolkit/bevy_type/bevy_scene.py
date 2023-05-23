@@ -1,4 +1,3 @@
-
 from blender_bevy_toolkit.rust_types.ron import Base, encode
 
 
@@ -35,10 +34,24 @@ class BevyEntity(Encodable):
     def to_ron(self):
         result = ["(", "  components: {"]
         for v in self.components:
-            result.append(f"    {convert(v, 2)},")
+            if isinstance(v, BevyComponents):
+                for v2 in v.comps:
+                    result.append(f"  {convert(v2, 2)},")
+            else:
+                result.append(f"  {convert(v, 2)},")
         result.append("  }")
         result.append(")")
         return "\n".join(result)
+
+
+class BevyComponents(Encodable):
+    def __init__(self, *comps):
+        self.comps = comps
+
+    def to_ron(self):
+        encoded = [convert(item) for item in self.comps]
+        print(encoded)
+        ",\n".join(encoded)
 
 
 class BevyComponent(Encodable):
@@ -67,7 +80,7 @@ class BevyComponentBundle(Encodable):
 
 
 class RawValue:
-    def __init__(self,  value):
+    def __init__(self, value):
         self.value = value
 
     def to_ron(self):
@@ -75,7 +88,7 @@ class RawValue:
 
 
 class StructProp:
-    def __init__(self,  *items, **props):
+    def __init__(self, *items, **props):
         self.items = items
         self.props = props
 
@@ -108,6 +121,7 @@ class DebugProp:
     def to_ron(self):
         return str(self.value)
 
+
 # REVIEW
 
 
@@ -122,11 +136,11 @@ class EnumProp:
             return f"{self.option}"
         result = [f"{self.option}"]
         if len(self.params):
-            result[0] = result[0]+"("
+            result[0] = result[0] + "("
         if self.params and len(self.params) != 0:
-            encoded = [str(item)
+            encoded = [encode(item)
                        for item in self.params]  # replace str by encode
-            result.append("  "+(",".join(encoded)))
+            result.append("  " + (",".join(encoded)))
         for k, v in self.props.items():
             result.append(f"  {k}: {convert(v)},")
         if len(self.params):
@@ -142,6 +156,6 @@ def add_indent(value, indent=1):
     if not indent:
         return value
     try:
-        return str(value).replace("\n", "\n"+("  "*indent))
+        return str(value).replace("\n", "\n" + ("  " * indent))
     except:
         return ""

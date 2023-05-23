@@ -1,9 +1,4 @@
-use bevy::{
-    asset::{AssetLoader, LoadContext},
-    prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
-    utils::BoxedFuture,
-};
+use bevy::prelude::*;
 #[derive(Reflect, Default, Component)]
 #[reflect(Component)] // this tells the reflect derive to also reflect component behaviors
 pub struct BlendGLBMeshLoader {
@@ -27,7 +22,7 @@ pub fn blend_glb_mesh_loader(
     }
 }
 
-pub fn blend_glb_mesh_loaderP(
+/*pub fn blend_glb_mesh_loaderP(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     query: Query<(&BlendGLBMeshLoader, Entity)>,
@@ -55,7 +50,7 @@ pub fn blend_glb_mesh_loaderP(
         //        commands.spawn(test2);
         //commands.entity(entity).insert(test.material);
     }
-}
+}*/
 
 #[derive(Reflect, Default, Component)]
 #[reflect(Component)] // this tells the reflect derive to also reflect component behaviors

@@ -1,8 +1,7 @@
-
-
 from multiprocessing import RawValue
 from blender_bevy_toolkit.bevy_type.bevy_scene import EnumProp, StructProp
-from blender_bevy_toolkit.rust_types.ron import Tuple
+from blender_bevy_toolkit.rust_types.ron import Tuple, Struct, EnumValue
+
 
 
 def Vec3(*props, **propsObj):
@@ -42,7 +41,7 @@ def asQuat(position):
 
 
 def color_rgba(red: float, green: float, blue: float, alpha: float):
-    return EnumProp("Rgba", red=red, green=green, blue=blue, alpha=alpha)
+    return EnumValue("Rgba", Struct(red=red, green=green, blue=blue, alpha=alpha))
 
 
 def color_rgb(red: float, green: float, blue: float):

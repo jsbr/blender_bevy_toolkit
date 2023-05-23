@@ -1,4 +1,7 @@
 import bpy
+
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent, BevyComponents
+from blender_bevy_toolkit.rust_types.ron import Struct, List
 from blender_bevy_toolkit.component_base import (
     register_component,
     ComponentBase,
@@ -21,43 +24,84 @@ class DirectionalLight(ComponentBase):
     @staticmethod
     def encode(config, obj):
         assert DirectionalLight.is_present(obj)
-
-        return Map(
-            type="bevy_pbr::light::DirectionalLight",
-            struct=Map(
-                color=RgbaLinear(obj.data.color),
-                illuminance=F32(obj.data.energy),
-                shadows_enabled=Bool(obj.data.use_shadow),
-                shadow_projection=Map(
-                    type="bevy_render::camera::projection::OrthographicProjection",
-                    struct=Map(
-                        left=F32(obj.bevy_directional_light_properties.left),
-                        right=F32(obj.bevy_directional_light_properties.right),
-                        bottom=F32(obj.bevy_directional_light_properties.bottom),
-                        top=F32(obj.bevy_directional_light_properties.top),
-                        near=F32(obj.bevy_directional_light_properties.near),
-                        far=F32(obj.bevy_directional_light_properties.far),
-                        window_origin=Enum(
-                            "bevy_render::camera::projection::WindowOrigin",
-                            EnumValue("Center"),
-                        ),
-                        scaling_mode=Enum(
-                            "bevy_render::camera::projection::ScalingMode",
-                            EnumValue("FixedVertical"),
-                        ),
-                        scale=F32(obj.bevy_directional_light_properties.scale),
-                        depth_calculation=Enum(
-                            "bevy_render::camera::camera::DepthCalculation",
-                            EnumValue("Distance"),
-                        ),
-                    ),
-                ),
-                shadow_depth_bias=F32(obj.data.shadow_buffer_bias),
-                shadow_normal_bias=F32(
-                    obj.bevy_directional_light_properties.shadow_normal_bias
-                ),
+        from blender_bevy_toolkit.rust_types.ron import Struct
+        cascadesFrusta = BevyComponent("bevy_render::primitives::CascadesFrusta", Struct())
+        cascades = BevyComponent("bevy_pbr::light::Cascades", Struct())
+        cascadeShadowConfig = BevyComponent("bevy_pbr::light::CascadeShadowConfig", Struct(
+            bounds=List(
+                #     30.0,
+                #     33.01927,
+                #     36.34241,
+                #     40.0,
+                obj.bevy_directional_light_properties.left,
+                obj.bevy_directional_light_properties.right,
+                obj.bevy_directional_light_properties.bottom,
+                obj.bevy_directional_light_properties.top,
             ),
-        )
+            # overlap_proportion: 0.2,
+            minimum_distance=obj.bevy_directional_light_properties.near,
+        ))
+        cascadesVisibleEntities = BevyComponent("bevy_pbr::bundle::CascadesVisibleEntities", Struct())
+        light = BevyComponent("bevy_pbr::light::DirectionalLight",
+                              color=RgbaLinear(obj.data.color),
+                              illuminance=F32(obj.data.energy * 1000),
+                              shadows_enabled=obj.data.use_shadow,
+                              # shadow_projection=Struct(
+                              #     left=F32(obj.bevy_directional_light_properties.left),
+                              #     right=F32(obj.bevy_directional_light_properties.right),
+                              #     bottom=F32(obj.bevy_directional_light_properties.bottom),
+                              #     top=F32(obj.bevy_directional_light_properties.top),
+                              #     near=F32(obj.bevy_directional_light_properties.near),
+                              #     far=F32(obj.bevy_directional_light_properties.far),
+                              #     window_origin=EnumValue("Center"),
+                              #     scaling_mode=EnumValue("FixedVertical"),
+                              #     scale=F32(obj.bevy_directional_light_properties.scale),
+                              #     depth_calculation=EnumValue("Distance"),
+                              # ),
+                              shadow_depth_bias=F32(obj.data.shadow_buffer_bias),
+                              shadow_normal_bias=F32(
+                                  obj.bevy_directional_light_properties.shadow_normal_bias
+                              ),
+                              )
+        # return light
+        return BevyComponents(light, cascadesFrusta, cascades, cascadeShadowConfig, cascadesVisibleEntities)
+
+    # return Map(
+    #     type="bevy_pbr::light::DirectionalLight",
+    #     struct=Map(
+    #         color=RgbaLinear(obj.data.color),
+    #         illuminance=F32(obj.data.energy),
+    #         shadows_enabled=Bool(obj.data.use_shadow),
+    #         shadow_projection=Map(
+    #             type="bevy_render::camera::projection::OrthographicProjection",
+    #             struct=Map(
+    #                 left=F32(obj.bevy_directional_light_properties.left),
+    #                 right=F32(obj.bevy_directional_light_properties.right),
+    #                 bottom=F32(obj.bevy_directional_light_properties.bottom),
+    #                 top=F32(obj.bevy_directional_light_properties.top),
+    #                 near=F32(obj.bevy_directional_light_properties.near),
+    #                 far=F32(obj.bevy_directional_light_properties.far),
+    #                 window_origin=Enum(
+    #                     "bevy_render::camera::projection::WindowOrigin",
+    #                     EnumValue("Center"),
+    #                 ),
+    #                 scaling_mode=Enum(
+    #                     "bevy_render::camera::projection::ScalingMode",
+    #                     EnumValue("FixedVertical"),
+    #                 ),
+    #                 scale=F32(obj.bevy_directional_light_properties.scale),
+    #                 depth_calculation=Enum(
+    #                     "bevy_render::camera::camera::DepthCalculation",
+    #                     EnumValue("Distance"),
+    #                 ),
+    #             ),
+    #         ),
+    #         shadow_depth_bias=F32(obj.data.shadow_buffer_bias),
+    #         shadow_normal_bias=F32(
+    #             obj.bevy_directional_light_properties.shadow_normal_bias
+    #         ),
+    #     ),
+    # )
 
     @staticmethod
     def can_add(obj):

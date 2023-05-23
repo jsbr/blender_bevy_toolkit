@@ -249,9 +249,10 @@ def serialize_material(config, material):
         ).encode("utf-8")
 
     else:
-        raise Exception(
-            f"Unable to export node type {main_node.type} from material {material.name}"
-        )
+        print(f"Unable to export node type {main_node.type} from material {material.name}")
+        # raise Exception(
+        #     f"Unable to export node type {main_node.type} from material {material.name}"
+        # )
 
 
 def get_normal_map(config, socket):

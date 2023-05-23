@@ -112,7 +112,10 @@ pub struct ColliderDescription {
     /// collider_shape = 0: Sphere collider
     ///     collider_shape_data: f32 = radius
     collider_shape: u8,
-    collider_shape_data: smallvec::SmallVec<[u8; 8]>,
+    //collider_shape_data: Vec<u8>,
+    size_x: f32,
+    size_y: f32,
+    size_z: f32,
 }
 /// Reads a f32 from a buffer
 fn get_f32(arr: &[u8]) -> f32 {
@@ -128,13 +131,13 @@ pub fn collider_description_to_builder(
         let shape = match collider_desc.collider_shape {
             0 => {
                 // Sphere
-                let radius = get_f32(&collider_desc.collider_shape_data[0..]);
+                let radius = collider_desc.size_x;
                 SharedShape::ball(radius)
             }
             1 => {
                 // Capsule
-                let half_height = get_f32(&collider_desc.collider_shape_data[0..]);
-                let radius = get_f32(&collider_desc.collider_shape_data[4..]);
+                let half_height = collider_desc.size_x;
+                let radius = collider_desc.size_y;
                 SharedShape::capsule(
                     Point3::new(0.0, 0.0, half_height),
                     Point3::new(0.0, 0.0, -half_height),
@@ -144,9 +147,9 @@ pub fn collider_description_to_builder(
             2 => {
                 // Box
                 SharedShape::cuboid(
-                    get_f32(&collider_desc.collider_shape_data[0..]),
-                    get_f32(&collider_desc.collider_shape_data[4..]),
-                    get_f32(&collider_desc.collider_shape_data[8..]),
+                    collider_desc.size_x,
+                    collider_desc.size_y,
+                    collider_desc.size_y,
                 )
             }
             _ => panic!("Unknown collider shape"),
@@ -157,7 +160,7 @@ pub fn collider_description_to_builder(
         commands.entity(entity).with_children(|children| {
             children
                 .spawn(Collider::from(shape))
-               // .insert(Sensor(collider_desc.is_sensor))
+                // .insert(Sensor(collider_desc.is_sensor))
                 .insert(Friction {
                     coefficient: collider_desc.friction,
                     ..Default::default()

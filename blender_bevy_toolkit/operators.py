@@ -116,9 +116,8 @@ class AddBevyComponent(bpy.types.Operator):
         if selected in ("0", ""):
             return {"FINISHED"}
         component = component_base.COMPONENTS[int(selected) - 1]
-        print(component_base.COMPONENTS)
+        # print(component_base.COMPONENTS)
         component.add(context.object)
-
         # Redraw UI
         for area in bpy.context.window.screen.areas:
             if area.type == "PROPERTIES":

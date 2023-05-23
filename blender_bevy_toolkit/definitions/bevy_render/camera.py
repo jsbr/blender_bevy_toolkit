@@ -44,7 +44,6 @@ class Camera(ComponentBase):
     @staticmethod
     def encode(config, obj) -> BevyComponent:
         """Returns a Component representing this component"""
-        print("encode Camera")
 
         return BevyComponent(
             "bevy_render::camera::camera::Camera",
@@ -61,7 +60,6 @@ class Camera(ComponentBase):
 
     @staticmethod
     def register():
-        print("register Camera")
         bpy.utils.register_class(CameraDescriptionProperties)
         bpy.types.Object.bevy_camera_description = bpy.props.PointerProperty(
             type=CameraDescriptionProperties

@@ -1,3 +1,5 @@
+from blender_bevy_toolkit.bevy_type.bevy_scene import BevyComponent
+from blender_bevy_toolkit.bevy_type.types import asVec3
 from blender_bevy_toolkit.component_base import (
     ComponentBase,
     register_component,
@@ -55,7 +57,17 @@ COLLIDER_SHAPES = [
         name="Capsule", encoder=encode_capsule_collider_data, draw_type="CAPSULE"
     ),
     BoundsType(name="Box", encoder=encode_box_collider_data, draw_type="BOX"),
+    BoundsType(name="Mesh", encoder=encode_box_collider_data, draw_type="BOX"),
 ]
+
+
+class ColliderComponenetRemove(bpy.types.Operator):
+    bl_idname = "scene.remove_colider"
+    bl_label = "X"
+
+    def execute(self, context):
+        ColliderDescription.remove(context.object)
+        return {'FINISHED'}
 
 
 @register_component
@@ -73,47 +85,22 @@ class ColliderDescription(ComponentBase):
 
         field_dict = {}
         field_dict["collider_shape"] = collider_shape
-        field_dict["collider_shape_data"] = rust_types.Map(
-            type="smallvec::SmallVec<[u8; {}]>".format(len(data)),
-            list=rust_types.List(*data),
-        )
+        field_dict["size_x"] = obj.rapier_collider_description.size_x
+        field_dict["size_y"] = obj.rapier_collider_description.size_y
+        field_dict["size_z"] = obj.rapier_collider_description.size_z
 
-        minx, miny, minz = 9e9, 9e9, 9e9
-        maxx, maxy, maxz = (
-            -9e9,
-            -9e9,
-            -9e9,
-        )
-        for x, y, z in obj.bound_box:
-            minx = min(minx, x)
-            miny = min(miny, y)
-            minz = min(minz, z)
-
-            maxx = max(maxx, x)
-            maxy = max(maxy, y)
-            maxz = max(maxz, z)
-
-        centroid_translation = [
-            minx + (maxx - minx) / 2,
-            miny + (maxy - miny) / 2,
-            minz + (maxz - minz) / 2,
-        ]
-
-        return rust_types.Map(
-            type="blender_bevy_toolkit::rapier_physics::ColliderDescription",
-            struct=rust_types.Map(
-                friction=rust_types.F32(obj.rapier_collider_description.friction),
-                restitution=rust_types.F32(obj.rapier_collider_description.restitution),
-                is_sensor=rust_types.Bool(obj.rapier_collider_description.is_sensor),
-                centroid_translation=rust_types.Vec3(centroid_translation),
-                density=rust_types.F32(obj.rapier_collider_description.density),
-                **field_dict
-            ),
-        )
+        return BevyComponent("blender_bevy_toolkit::rapier_physics::ColliderDescription",
+                             friction=rust_types.F32(obj.rapier_collider_description.friction),
+                             restitution=rust_types.F32(obj.rapier_collider_description.restitution),
+                             is_sensor=obj.rapier_collider_description.is_sensor,
+                             centroid_translation=asVec3(obj.rapier_collider_description.translation),
+                             density=rust_types.F32(obj.rapier_collider_description.density),
+                             **field_dict
+                             )
 
     def is_present(obj):
         """Returns true if the supplied object has this component"""
-        return obj.rapier_collider_description.present
+        return obj.rapier_collider_description.present or "colider" in obj.components.components
 
     def can_add(obj):
         return True
@@ -121,16 +108,20 @@ class ColliderDescription(ComponentBase):
     @staticmethod
     def add(obj):
         obj.rapier_collider_description.present = True
+        update_value(obj)
+        obj.components.components += "colider,"
         update_draw_bounds(obj)
 
     @staticmethod
     def remove(obj):
         obj.rapier_collider_description.present = False
+        obj.components.components = obj.components.components.replace("colider,", "")
         update_draw_bounds(obj)
 
     @staticmethod
     def register():
         bpy.utils.register_class(ColliderDescriptionPanel)
+        bpy.utils.register_class(ColliderComponenetRemove)
         bpy.utils.register_class(ColliderDescriptionProperties)
         bpy.types.Object.rapier_collider_description = bpy.props.PointerProperty(
             type=ColliderDescriptionProperties
@@ -139,6 +130,7 @@ class ColliderDescription(ComponentBase):
     @staticmethod
     def unregister():
         bpy.utils.unregister_class(ColliderDescriptionPanel)
+        bpy.utils.unregister_class(ColliderComponenetRemove)
         bpy.utils.unregister_class(ColliderDescriptionProperties)
         del bpy.types.Object.rapier_collider_description
 
@@ -147,10 +139,7 @@ class ButtonOperator(bpy.types.Operator):
     bl_idname = "scene.button_operator"
     bl_label = "X"
 
-    id = bpy.props.IntProperty()
-
     def execute(self, context):
-        print("Pressed button ", self.id)
         context.object.rapier_collider2_description.present = False
         return {'FINISHED'}
 
@@ -167,7 +156,7 @@ class ColliderDescriptionPanel(bpy.types.Panel):
         return ColliderDescription.is_present(context.object)
 
     def draw_header(self, context):
-        self.layout.operator("scene.button_operator")
+        self.layout.operator("scene.remove_colider")
 
     def draw(self, context):
         row = self.layout.row()
@@ -175,11 +164,35 @@ class ColliderDescriptionPanel(bpy.types.Panel):
             text="A collider so this object can collide with things (when coupled with a rigidbody somewhere)"
         )
 
-        fields = ["friction", "restitution", "is_sensor", "density", "collider_shape"]
+        fields = ["collider_shape", ["friction", "restitution"], ["is_sensor", "density"], "translation", "rotation"]
 
         for field in fields:
-            row = self.layout.row()
-            row.prop(context.object.rapier_collider_description, field)
+            if isinstance(field, list):
+                row = self.layout.row()
+                for f in field:
+                    row.prop(context.object.rapier_collider_description, f)
+            else:
+                row = self.layout.row()
+                row.prop(context.object.rapier_collider_description, field)
+
+        obj = context.object
+        collider_id = obj.rapier_collider_description.collider_shape
+
+        box = self.layout.box()
+        box.label(text='Size')
+        row = box.row()
+        if collider_id == "2":  # BOX
+            row.prop(context.object.rapier_collider_description, "size_x", text="X")
+            row = box.row()
+            row.prop(context.object.rapier_collider_description, "size_y", text="Y")
+            row = box.row()
+            row.prop(context.object.rapier_collider_description, "size_z", text="Z")
+        elif collider_id == "0":  # Sphere
+            row.prop(context.object.rapier_collider_description, "size_x", text="Radius")
+        elif collider_id == "1":  # Capsule
+            row.prop(context.object.rapier_collider_description, "size_x", text="Height")
+            row = box.row()
+            row.prop(context.object.rapier_collider_description, "size_y", text="Width")
 
 
 def update_draw_bounds(obj):
@@ -196,9 +209,42 @@ def update_draw_bounds(obj):
         obj.show_bounds = False
 
 
+def update_value(obj):
+    collider_type_id = obj.rapier_collider_description.collider_shape
+    if obj.type == "MESH":
+        if collider_type_id == "0":
+            obj.rapier_collider_description.size_x = max(obj.dimensions.x, obj.dimensions.y, obj.dimensions.z) / 2.0
+        elif collider_type_id == "1":
+            radius = max(obj.dimensions.x, obj.dimensions.y) / 2.0
+            half_height = max(obj.dimensions.z - radius, 0.0) / 2.0
+            obj.rapier_collider_description.size_x = radius
+            obj.rapier_collider_description.size_y = half_height
+        elif collider_type_id == "2":
+            obj.rapier_collider_description.size_x = obj.dimensions.x / 2.0
+            obj.rapier_collider_description.size_y = obj.dimensions.y / 2.0
+            obj.rapier_collider_description.size_z = obj.dimensions.z / 2.0
+
+        for x, y, z in obj.bound_box:
+            minx = min(minx, x)
+            miny = min(miny, y)
+            minz = min(minz, z)
+
+            maxx = max(maxx, x)
+            maxy = max(maxy, y)
+            maxz = max(maxz, z)
+
+        obj.rapier_collider_description.translation = [
+            minx + (maxx - minx) / 2,
+            miny + (maxy - miny) / 2,
+            minz + (maxz - minz) / 2,
+        ]
+
+
 def collider_shape_changed(_, context):
     """Runs when the enum selecting the shape is changed"""
     update_draw_bounds(context.object)
+    obj = context.object
+    update_value(obj)
 
 
 class ColliderDescriptionProperties(bpy.types.PropertyGroup):
@@ -206,7 +252,13 @@ class ColliderDescriptionProperties(bpy.types.PropertyGroup):
 
     friction: bpy.props.FloatProperty(name="friction", default=0.5)
     restitution: bpy.props.FloatProperty(name="restitution", default=0.5)
+    size_x: bpy.props.FloatProperty(name="size_x", default=0.0)
+    size_y: bpy.props.FloatProperty(name="size_y", default=0.0)
+    size_z: bpy.props.FloatProperty(name="size_z", default=0.0)
     is_sensor: bpy.props.BoolProperty(name="is_sensor", default=False)
+
+    translation: bpy.props.FloatVectorProperty(name="translation", size=3)
+    rotation: bpy.props.FloatVectorProperty(name="rotation", size=3)
 
     density: bpy.props.FloatProperty(name="density", default=0.5)
 

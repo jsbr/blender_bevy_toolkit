@@ -132,6 +132,8 @@ def insert_class_methods(
 
         def execute(self, context):
             getattr(context.object, component_def.id).present = False
+            context.object.components.components = context.object.components.components.replace(component_def.id + ",",
+                                                                                                "")
             return {'FINISHED'}
 
     # These functions all get put inside the component_class
@@ -152,6 +154,7 @@ def insert_class_methods(
         delattr(bpy.types.Object, component_def.id)
 
     def remove(obj):
+        obj.components.components = obj.components.components.replace(component_def.id + ",", "")
         getattr(obj, component_def.id).present = False
 
     def encode(_config, obj):
@@ -189,10 +192,13 @@ def insert_class_methods(
             return True
 
         def add(obj):
+            # obj.components.components = obj.components.components or ""
+            obj.components.components += component_def.id + ","
             getattr(obj, component_def.id).present = True
 
         def is_present(obj):
-            return getattr(obj, component_def.id).present
+            # obj.components.components = obj.components.components or ""
+            return getattr(obj, component_def.id).present or component_def.id in obj.components.components
 
     else:
 
