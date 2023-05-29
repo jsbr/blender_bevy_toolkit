@@ -36,7 +36,8 @@ impl Plugin for BlendLoadPlugin {
         app.add_system(blend_glb::blend_glb_mesh_loader);
         app.add_system(blend_glb::blend_glb_material_loader);
         app.add_system(blend_material::blend_material_loader);
+        app.add_system(rapier_physics::blend_test_colider);
         app.add_system(rapier_physics::body_description_to_builder);
-        app.add_system(rapier_physics::collider_description_to_builder);
+        //app.add_system(rapier_physics::collider_description_to_builder);
     }
 }

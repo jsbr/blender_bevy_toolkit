@@ -75,6 +75,5 @@ def construct_component_classes(name: str, component):
 def load_compoent(path):
     data = toml.load(path)
     for key in data:
-        print(f"create {key} {data[key]}")
         component_class = construct_component_classes(key, data[key])
         register_component(component_class)

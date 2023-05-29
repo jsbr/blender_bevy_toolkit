@@ -18,7 +18,8 @@ BoundsType = collections.namedtuple("BoundsType", ["name", "encoder", "draw_type
 
 def encode_sphere_collider_data(obj):
     if obj.type == "EMPTY":
-        radius = obj.empty_display_size
+        radius = obj.empty_display_sizeBoundsType = collections.namedtuple("BoundsType", ["name", "encoder", "draw_type"])
+
     elif obj.type == "MESH":
         radius = max(obj.dimensions.x, obj.dimensions.y, obj.dimensions.z) / 2.0
     else:
@@ -72,6 +73,8 @@ class ColliderComponenetRemove(bpy.types.Operator):
 
 @register_component
 class ColliderDescription(ComponentBase):
+    label = "Bounds Collider"
+
     def encode(config, obj):
         """Returns a Component representing this component"""
 
@@ -146,7 +149,7 @@ class ButtonOperator(bpy.types.Operator):
 
 class ColliderDescriptionPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_rapier_collider_description"
-    bl_label = "ColliderDescription"
+    bl_label = "Bounds Collider"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "physics"
@@ -182,7 +185,7 @@ class ColliderDescriptionPanel(bpy.types.Panel):
         box.label(text='Size')
         row = box.row()
         if collider_id == "2":  # BOX
-            row.prop(context.object.rapier_collider_description, "size_x", text="X")
+            row.prop(context.object.rapier_collider_description, "size_x", text="X", )
             row = box.row()
             row.prop(context.object.rapier_collider_description, "size_y", text="Y")
             row = box.row()
@@ -223,7 +226,12 @@ def update_value(obj):
             obj.rapier_collider_description.size_x = obj.dimensions.x / 2.0
             obj.rapier_collider_description.size_y = obj.dimensions.y / 2.0
             obj.rapier_collider_description.size_z = obj.dimensions.z / 2.0
-
+        maxx, maxy, maxz = (
+            -9e9,
+            -9e9,
+            -9e9,
+        )
+        minx, miny, minz = 9e9, 9e9, 9e9
         for x, y, z in obj.bound_box:
             minx = min(minx, x)
             miny = min(miny, y)

@@ -45,7 +45,7 @@ class List(Base):
         indc = ind(indent + 1)
         return (
             f"[{indc}"
-            + f",{indc}".join(encode(str(d), indent + 1) for d in self.values)
+            + f",{indc}".join(encode(d, indent + 1) for d in self.values)
             + f"{ind(indent)}]"
         )
 
@@ -92,7 +92,7 @@ class Struct(Base):
             return "()"
         indc = ind(indent + 1)
         field_string = f",{indc}".join(
-            f"{k}: {encode(v, indent+1)}" for k, v in self.mapping.items()
+            f"{k}: {encode(v, indent + 1)}" for k, v in self.mapping.items()
         )
         return f"({indc}{field_string}{ind(indent)})"
 
@@ -113,7 +113,7 @@ class Map(Base):
             return "{}"
         indc = ind(indent + 1)
         field_string = f",{indc}".join(
-            f"{encode(k, indent+1)}:{encode(v, indent+1)}"
+            f"{encode(k, indent + 1)}:{encode(v, indent + 1)}"
             for k, v in self.mapping.items()
         )
         return f"{{{indc}{field_string}{ind(indent)}}}"
@@ -223,6 +223,6 @@ def add_indent(value, indent=1):
     if not indent:
         return value
     try:
-        return str(value).replace("\n", "\n"+("  "*indent))
+        return str(value).replace("\n", "\n" + ("  " * indent))
     except:
         return ""

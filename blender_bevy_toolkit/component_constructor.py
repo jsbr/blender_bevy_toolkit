@@ -95,8 +95,9 @@ def create_ui_panel(component_def, component_class, fields):
         row = self.layout.row()
         row.label(text=component_def.description)
         if len(fields) == 1:
-            row = self.layout.row()
-            row.label(text="No Options")
+            pass
+            # row = self.layout.row()
+            # row.label(text="No Options")
         else:
             for field in fields:
                 if field == "present":
@@ -187,7 +188,6 @@ def insert_class_methods(
 
         def can_add(obj):
             if hasattr(component_def, "target") and component_def.target:
-                print(f"can_add: {obj.type} {component_def.id} {component_def.target}")
                 return obj.type == component_def.target
             return True
 

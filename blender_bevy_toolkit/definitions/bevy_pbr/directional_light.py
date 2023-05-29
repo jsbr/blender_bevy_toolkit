@@ -33,10 +33,10 @@ class DirectionalLight(ComponentBase):
                 #     33.01927,
                 #     36.34241,
                 #     40.0,
-                obj.bevy_directional_light_properties.left,
-                obj.bevy_directional_light_properties.right,
-                obj.bevy_directional_light_properties.bottom,
-                obj.bevy_directional_light_properties.top,
+                float(obj.bevy_directional_light_properties.left),
+                float(obj.bevy_directional_light_properties.right),
+                float(obj.bevy_directional_light_properties.bottom),
+                float(obj.bevy_directional_light_properties.top),
             ),
             # overlap_proportion: 0.2,
             minimum_distance=obj.bevy_directional_light_properties.near,
@@ -44,7 +44,7 @@ class DirectionalLight(ComponentBase):
         cascadesVisibleEntities = BevyComponent("bevy_pbr::bundle::CascadesVisibleEntities", Struct())
         light = BevyComponent("bevy_pbr::light::DirectionalLight",
                               color=RgbaLinear(obj.data.color),
-                              illuminance=F32(obj.data.energy * 1000),
+                              illuminance=F32(obj.data.energy * 10000),
                               shadows_enabled=obj.data.use_shadow,
                               # shadow_projection=Struct(
                               #     left=F32(obj.bevy_directional_light_properties.left),

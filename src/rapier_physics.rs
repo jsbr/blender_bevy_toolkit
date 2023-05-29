@@ -142,7 +142,8 @@ pub fn collider_description_to_builder(
                     Point3::new(0.0, 0.0, half_height),
                     Point3::new(0.0, 0.0, -half_height),
                     radius,
-                )
+                );
+                SharedShape::capsule_y(half_height, radius)
             }
             2 => {
                 // Box
@@ -176,5 +177,17 @@ pub fn collider_description_to_builder(
                 ))
                 .insert(ColliderMassProperties::Density(collider_desc.density));
         });
+    }
+}
+
+pub fn blend_test_colider(
+    mut commands: Commands,
+    collider_desc_query: Query<(&ColliderDescription, Entity)>,
+) {
+    for (desc, entity) in collider_desc_query.iter() {
+        commands.entity(entity).remove::<ColliderDescription>();
+        commands
+            .entity(entity)
+            .insert(Collider::capsule_y(desc.size_x, desc.size_y));
     }
 }

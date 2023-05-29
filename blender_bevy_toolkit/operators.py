@@ -18,11 +18,11 @@ def update_all_component_list():
     blend file is loaded)."""
     global ALL_COMPONENT_LIST  # pylint: disable=W0603
     component_list = []
-    print("update_all_component_list")
     print(component_base.COMPONENTS)
     for component_index, component in enumerate(component_base.COMPONENTS):
+        name = component.label if hasattr(component, "label") else component.__name__
         component_list.append(
-            (str(component_index + 1), component.__name__, component))
+            (str(component_index + 1), name, component))
     ALL_COMPONENT_LIST = component_list
 
 
